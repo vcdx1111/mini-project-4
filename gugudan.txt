@@ -1,0 +1,104 @@
+
+section .data
+prompt      db  "Enter a number (1-9): ", 0   
+prompt_len  equ $ - prompt                    
+ten         dd 10                             ; 10 div const
+nl          db  10                            ; '\n'
+
+section .bss
+num         resb 1                            ; ascii 숫자
+linebuf     resb 32                           ; 한 줄 출력 버퍼
+
+section .text
+global _start
+
+_start:
+    mov     eax, 1            ; write
+    mov     edi, 1            ; stdout
+    mov     rsi, prompt       ; rsi = 버퍼 주소
+    mov     edx, prompt_len   ; rdx = 길이
+    syscall                   ; request kernel to write
+
+   
+    mov     eax, 0            ; read
+    mov     edi, 0            ; stdin
+    mov     rsi, num          ; rsi = 저장 버퍼
+    mov     edx, 1            ; rdx = 1바이트만 읽기
+    syscall                   ; read
+
+    
+    movzx   ebx, byte [num]   ; ebx = 입력된 ASCII
+    sub     ebx, '0'          ; ebx = loop 얼마나 
+
+    
+    mov     r8d, 1            ; i = 1 count loop
+
+.loop_start:
+    cmp     r8d, 10           ; i == 10 ?
+    je      .loop_end         ; 10이면 break
+
+  
+    mov     eax, ebx          ; eax = N
+    imul    eax, r8d          ; eax = N * i 
+
+    
+    mov     rdi, linebuf      ; rdi = 쓰기 위치
+    mov     rsi, rdi          ; rsi = 버퍼 시작 
+
+    mov     dl, bl            ; dl = N
+    add     dl, '0'          
+    mov     [rdi], dl
+    inc     rdi
+
+    mov     byte [rdi], ' '   ; print ' '
+    inc     rdi
+    mov     byte [rdi], 'x'   ; print 'x'
+    inc     rdi
+    mov     byte [rdi], ' '   ; print ' '
+    inc     rdi
+
+    mov     dl, r8b           ; dl = i
+    add     dl, '0'
+    mov     [rdi], dl
+    inc     rdi
+
+    mov     byte [rdi], ' '   ; ' '
+    inc     rdi
+    mov     byte [rdi], '='   ; '='
+    inc     rdi
+    mov     byte [rdi], ' '   ; ' '
+    inc     rdi
+
+ 
+    xor     edx, edx          ; rdx = 0 
+    div     dword [ten]       ; eax = tenth, RDX = ones
+
+    cmp     eax, 0            ; is tenth 0?
+    je      .one_digit
+
+    add     al, '0'           ; 십의자리 ascii
+    mov     [rdi], al
+    inc     rdi
+.one_digit:
+    add     dl, '0'           ; 일의자리 ascii
+    mov     [rdi], dl
+    inc     rdi
+
+    mov     byte [rdi], 10    ; '\n'
+    inc     rdi
+
+   
+    mov     rdx, rdi          
+    sub     rdx, rsi          
+    mov     eax, 1            ; sys_write
+    mov     edi, 1            ; stdout
+    mov     rsi, linebuf      ; 버퍼 주소
+    syscall                   
+
+    inc     r8d               ; i++
+    jmp     .loop_start
+
+.loop_end:
+    mov     eax, 60           ; sys_exit
+    xor     edi, edi          
+    syscall
